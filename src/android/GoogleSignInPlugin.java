@@ -51,7 +51,7 @@ public class GoogleSignInPlugin extends CordovaPlugin {
     private FirebaseAuth mAuth;
 
     private SignInClient mOneTapSigninClient;
-    private BeginSignInRequest mSiginRequest;
+    private BeginSignInRequest mSigninRequest;
 
     private Context mContext;
     private Activity mCurrentActivity;
@@ -164,22 +164,23 @@ public class GoogleSignInPlugin extends CordovaPlugin {
         if(shouldShowOneTapUI) {
             cordova.setActivityResultCallback(this);
             mOneTapSigninClient = Identity.getSignInClient(mContext);
-            mSiginRequest = BeginSignInRequest.builder()
-                    .setPasswordRequestOptions(BeginSignInRequest.PasswordRequestOptions.builder().build())
+            mSigninRequest = BeginSignInRequest.builder()
                     .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
                             .setSupported(true)
-                            .setFilterByAuthorizedAccounts(false)
-                            .setServerClientId(this.cordova.getActivity().getResources().getString(getAppResource("default_client_id", "string")))
+                            .setServerClientId(this.cordova.getActivity().getResources()
+                                    .getString(getAppResource("default_client_id", "string")))
+                            .setFilterByAuthorizedAccounts(true)
                             .build())
-                    .setAutoSelectEnabled(true)
                     .build();
 
-            mOneTapSigninClient.beginSignIn(mSiginRequest)
+            mOneTapSigninClient.beginSignIn(mSigninRequest)
                     .addOnSuccessListener(new OnSuccessListener<BeginSignInResult>() {
                         @Override
                         public void onSuccess(BeginSignInResult beginSignInResult) {
                             try {
-                                mCurrentActivity.startIntentSenderForResult(beginSignInResult.getPendingIntent().getIntentSender(), RC_ONE_TAP, null, 0, 0, 0);
+                                mCurrentActivity.startIntentSenderForResult(
+                                        beginSignInResult.getPendingIntent().getIntentSender(), RC_ONE_TAP, null, 0, 0,
+                                        0);
                             } catch (IntentSender.SendIntentException ex) {
                                 ex.printStackTrace();
                                 mCallbackContext.error(getErrorMessageInJsonString(ex.getMessage()));
@@ -258,7 +259,8 @@ public class GoogleSignInPlugin extends CordovaPlugin {
 
     private GoogleSignInOptions getGoogleSignInOptions() {
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(this.cordova.getActivity().getResources().getString(getAppResource("default_client_id", "string")))
+                .requestIdToken(this.cordova.getActivity().getResources()
+                        .getString(getAppResource("default_client_id", "string")))
                 .requestEmail()
                 .build();
         return gso;
