@@ -110,7 +110,7 @@ public class GoogleSignInPlugin extends CordovaPlugin {
             try {
                 SignInCredential credential = mOneTapSigninClient.getSignInCredentialFromIntent(data);
                 firebaseAuthWithGoogle(credential.getGoogleIdToken());
-            } catch(ApiException ex) {
+            } catch (ApiException ex) {
                 String errorMessage = "";
                 switch (ex.getStatusCode()) {
                     case CommonStatusCodes.CANCELED:
@@ -161,7 +161,7 @@ public class GoogleSignInPlugin extends CordovaPlugin {
         SharedPreferences sharedPreferences = getSharedPreferences();
         boolean shouldShowOneTapUI = sharedPreferences.getBoolean(Constants.PREF_SHOW_ONE_TAP_UI, true);
 
-        if(shouldShowOneTapUI) {
+        if (shouldShowOneTapUI) {
             cordova.setActivityResultCallback(this);
             mOneTapSigninClient = Identity.getSignInClient(mContext);
             mSigninRequest = BeginSignInRequest.builder()
@@ -224,7 +224,7 @@ public class GoogleSignInPlugin extends CordovaPlugin {
             @Override
             public void onComplete(@NonNull Task<AuthResult> task) {
 
-                if(task.isSuccessful()) {
+                if (task.isSuccessful()) {
                     FirebaseUser user = mAuth.getCurrentUser();
                     user.getIdToken(false).addOnSuccessListener(new OnSuccessListener<GetTokenResult>() {
                         @Override
@@ -283,8 +283,8 @@ public class GoogleSignInPlugin extends CordovaPlugin {
         Date now = new Date();
         long coolingStartTime = sharedPreferences.getLong(Constants.PREF_COOLING_START_TIME, now.getTime());
 
-        int daysApart = (int)((now.getTime() - coolingStartTime) / (1000*60*60*24l));
-        if(daysApart >= 1) {
+        int daysApart = (int) ((now.getTime() - coolingStartTime) / (1000 * 60 * 60 * 24l));
+        if (daysApart >= 1) {
             SharedPreferences.Editor preferences = sharedPreferences.edit();
             preferences.putBoolean(Constants.PREF_SHOW_ONE_TAP_UI, true);
             preferences.putLong(Constants.PREF_COOLING_START_TIME, 0L);
@@ -326,6 +326,6 @@ public class GoogleSignInPlugin extends CordovaPlugin {
     }
 
     private SharedPreferences getSharedPreferences() {
-         return mContext.getSharedPreferences(Constants.PREF_FILENAME, Context.MODE_PRIVATE);
+        return mContext.getSharedPreferences(Constants.PREF_FILENAME, Context.MODE_PRIVATE);
     }
 }
