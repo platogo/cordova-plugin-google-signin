@@ -33,12 +33,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.GetTokenResult;
-import com.google.firebase.auth.GoogleAuthProvider;
 
 import java.util.Date;
 
@@ -101,7 +96,7 @@ public class GoogleSignInPlugin extends CordovaPlugin {
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
                 account = task.getResult(ApiException.class);
-                firebaseAuthWithGoogle(account.getIdToken());
+                respondWithGoogleToken(account.getIdToken());
             } catch (Exception ex) {
                 System.out.println("Google sign in failed: " + ex);
                 mCallbackContext.error(getErrorMessageInJsonString(ex.getMessage()));
@@ -109,7 +104,8 @@ public class GoogleSignInPlugin extends CordovaPlugin {
         } else if (requestCode == RC_ONE_TAP) {
             try {
                 SignInCredential credential = mOneTapSigninClient.getSignInCredentialFromIntent(data);
-                firebaseAuthWithGoogle(credential.getGoogleIdToken());
+                respondWithGoogleToken(credential.getGoogleIdToken());
+
             } catch (ApiException ex) {
                 String errorMessage = "";
                 switch (ex.getStatusCode()) {
@@ -165,12 +161,15 @@ public class GoogleSignInPlugin extends CordovaPlugin {
             cordova.setActivityResultCallback(this);
             mOneTapSigninClient = Identity.getSignInClient(mContext);
             mSigninRequest = BeginSignInRequest.builder()
-                    .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
-                            .setSupported(true)
-                            .setServerClientId(this.cordova.getActivity().getResources()
-                                    .getString(getAppResource("default_client_id", "string")))
-                            .setFilterByAuthorizedAccounts(true)
-                            .build())
+                    .setPasswordRequestOptions(
+                            BeginSignInRequest.PasswordRequestOptions.builder().setSupported(true).build())
+                    .setGoogleIdTokenRequestOptions(
+                            BeginSignInRequest.GoogleIdTokenRequestOptions.builder().setSupported(true)
+                                    .setServerClientId(this.cordova.getActivity().getResources()
+                                            .getString(getAppResource("default_client_id", "string")))
+                                    .setFilterByAuthorizedAccounts(true)
+                                    .build())
+                    .setAutoSelectEnabled(true)
                     .build();
 
             mOneTapSigninClient.beginSignIn(mSigninRequest)
@@ -199,18 +198,16 @@ public class GoogleSignInPlugin extends CordovaPlugin {
     }
 
     private void signOut() {
-        GoogleSignInOptions gso = getGoogleSignInOptions();
+        mOneTapSigninClient = Identity.getSignInClient(mContext);
 
-        GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(mContext, gso);
-        mGoogleSignInClient.signOut().addOnCompleteListener(new OnCompleteListener<Void>() {
+        mOneTapSigninClient.signOut().addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 account = null;
                 mCallbackContext.success(getSuccessMessageInJsonString("Logged out"));
-                mAuth.signOut();
             }
         });
-        mGoogleSignInClient.signOut().addOnFailureListener(new OnFailureListener() {
+        mOneTapSigninClient.signOut().addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception ex) {
                 mCallbackContext.error(getErrorMessageInJsonString(ex.getMessage()));
@@ -218,43 +215,14 @@ public class GoogleSignInPlugin extends CordovaPlugin {
         });
     }
 
-    private void firebaseAuthWithGoogle(String googleIdToken) {
-        AuthCredential credentials = GoogleAuthProvider.getCredential(googleIdToken, null);
-        mAuth.signInWithCredential(credentials).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-            @Override
-            public void onComplete(@NonNull Task<AuthResult> task) {
-
-                if (task.isSuccessful()) {
-                    FirebaseUser user = mAuth.getCurrentUser();
-                    user.getIdToken(false).addOnSuccessListener(new OnSuccessListener<GetTokenResult>() {
-                        @Override
-                        public void onSuccess(GetTokenResult getTokenResult) {
-                            try {
-                                JSONObject userInfo = new JSONObject();
-                                userInfo.put("id", user.getUid());
-                                userInfo.put("display_name", user.getDisplayName());
-                                userInfo.put("email", user.getEmail());
-                                userInfo.put("photo_url", user.getPhotoUrl());
-                                userInfo.put("id_token", getTokenResult.getToken());
-                                mCallbackContext.success(getSuccessMessageForOneTapLogin(userInfo));
-                            } catch (Exception ex) {
-                                mCallbackContext.error(getErrorMessageInJsonString(ex.getMessage()));
-                            }
-                        }
-                    }).addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception ex) {
-                            mCallbackContext.error(getErrorMessageInJsonString(ex.getMessage()));
-                        }
-                    });
-                }
-            }
-        }).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception ex) {
-                mCallbackContext.error(getErrorMessageInJsonString(ex.getMessage()));
-            }
-        });
+    private void respondWithGoogleToken(String idToken) {
+        try {
+            JSONObject userInfo = new JSONObject();
+            userInfo.put("id_token", idToken);
+            mCallbackContext.success(getSuccessMessageForOneTapLogin(userInfo));
+        } catch (Exception ex) {
+            mCallbackContext.error(getErrorMessageInJsonString(ex.getMessage()));
+        }
     }
 
     private GoogleSignInOptions getGoogleSignInOptions() {
