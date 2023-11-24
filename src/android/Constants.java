@@ -5,6 +5,7 @@ public class Constants {
 
     public static final String PREF_SHOW_ONE_TAP_UI                 = "pref_show_one_tap_ui";
     public static final String PREF_COOLING_START_TIME              = "pref_cooling_start_time";
+    public static final String PREF_CANCEL_TIME_ARRAY_STRING        = "pref_cancel_time_array_string";
 
     public static final String CORDOVA_ACTION_ONE_TAP_LOGIN         = "oneTapLogin";
     public static final String CORDOVA_ACTION_IS_SIGNEDIN           = "isSignedIn";

@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.SharedPreferences;
+import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 
@@ -35,12 +36,14 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 
-import java.util.Date;
+import java.util.*;
 
 public class GoogleSignInPlugin extends CordovaPlugin {
 
     private static final int RC_SIGN_IN = 101;
     private static final int RC_ONE_TAP = 102;
+    private static final int CANCELLATION_LIMIT = 3;
+    private static final float FIFTEEN_MINUTES = 1000 * 60 * 15L;
 
     private GoogleSignInAccount account;
     private FirebaseAuth mAuth;
@@ -111,7 +114,9 @@ public class GoogleSignInPlugin extends CordovaPlugin {
                 switch (ex.getStatusCode()) {
                     case CommonStatusCodes.CANCELED:
                         errorMessage = "One Tap Signin was denied by the user.";
-                        beginOneTapSigninCoolingPeriod();
+                        if (hasCancelledThriceInLastFifteenMinutes()) {
+                            beginOneTapSigninCoolingPeriod();
+                        }
                         break;
                     default:
                         errorMessage = ex.getLocalizedMessage();
@@ -251,13 +256,53 @@ public class GoogleSignInPlugin extends CordovaPlugin {
         Date now = new Date();
         long coolingStartTime = sharedPreferences.getLong(Constants.PREF_COOLING_START_TIME, now.getTime());
 
-        int daysApart = (int) ((now.getTime() - coolingStartTime) / (1000 * 60 * 15L));
-        if (daysApart >= 1) {
+        int coolingTime = (int) ((now.getTime() - coolingStartTime) / FIFTEEN_MINUTES);
+        if (coolingTime >= 1) {
             SharedPreferences.Editor preferences = sharedPreferences.edit();
             preferences.putBoolean(Constants.PREF_SHOW_ONE_TAP_UI, true);
             preferences.putLong(Constants.PREF_COOLING_START_TIME, 0L);
+            preferences.putString(Constants.PREF_CANCEL_TIME_ARRAY_STRING, "");
             preferences.apply();
         }
+    }
+
+    private Boolean hasCancelledThriceInLastFifteenMinutes() {
+        SharedPreferences sharedPreferences = getSharedPreferences();
+        String cancelTimeArrayString = sharedPreferences.getString(Constants.PREF_CANCEL_TIME_ARRAY_STRING, "");
+        ArrayList<Number> newCancelTimeArray = new ArrayList<Number>();
+        long now = new Date().getTime();
+
+        newCancelTimeArray.add(now);
+
+        if (cancelTimeArrayString.isEmpty()) {
+            saveCancelTime(newCancelTimeArray);
+            return false;
+        }
+
+        String[] cancelTimeArray = cancelTimeArrayString.split(";");
+        for (String timeAsString : cancelTimeArray) {
+            long time = Long.parseLong(timeAsString);
+            long diff = now - time;
+
+            if (diff <= FIFTEEN_MINUTES) {
+                newCancelTimeArray.add(time);
+            }
+        }
+
+        saveCancelTime(newCancelTimeArray);
+
+        return newCancelTimeArray.size() >= CANCELLATION_LIMIT;
+
+    }
+
+    private void saveCancelTime(ArrayList<Number> cancelTimeArray) {
+        SharedPreferences sharedPreferences = getSharedPreferences();
+        SharedPreferences.Editor preferences = sharedPreferences.edit();
+
+        String cancelTimeString = TextUtils.join(";", cancelTimeArray);
+
+        preferences.putString(Constants.PREF_CANCEL_TIME_ARRAY_STRING, cancelTimeString);
+        preferences.apply();
     }
 
     private String getSuccessMessageForOneTapLogin(JSONObject userInfo) {
