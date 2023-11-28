@@ -167,7 +167,7 @@ public class GoogleSignInPlugin extends CordovaPlugin {
                             BeginSignInRequest.GoogleIdTokenRequestOptions.builder().setSupported(true)
                                     .setServerClientId(this.cordova.getActivity().getResources()
                                             .getString(getAppResource("default_client_id", "string")))
-                                    .setFilterByAuthorizedAccounts(true)
+                                    .setFilterByAuthorizedAccounts(false)
                                     .build())
                     .setAutoSelectEnabled(true)
                     .build();
