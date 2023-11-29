@@ -193,7 +193,7 @@ public class GoogleSignInPlugin extends CordovaPlugin {
                         }
                     });
         } else {
-            mCallbackContext.error(getErrorMessageInJsonString("One Tap Signin was denied by the user."));
+            mCallbackContext.error(getErrorMessageInJsonString("Cooling period is active, wait fifteen minutes"));
         }
     }
 
@@ -251,7 +251,7 @@ public class GoogleSignInPlugin extends CordovaPlugin {
         Date now = new Date();
         long coolingStartTime = sharedPreferences.getLong(Constants.PREF_COOLING_START_TIME, now.getTime());
 
-        int daysApart = (int) ((now.getTime() - coolingStartTime) / (1000 * 60 * 60 * 24l));
+        int daysApart = (int) ((now.getTime() - coolingStartTime) / (1000 * 60 * 15L));
         if (daysApart >= 1) {
             SharedPreferences.Editor preferences = sharedPreferences.edit();
             preferences.putBoolean(Constants.PREF_SHOW_ONE_TAP_UI, true);
